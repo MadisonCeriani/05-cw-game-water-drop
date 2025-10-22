@@ -27,7 +27,7 @@ Fonts:
 
 body {
     font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
-    background: linear-gradient(180deg, #e6f8ff 0%, #e9f7ee 60%);
+    background: #8BD1CB; /* light blue background */
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -37,11 +37,79 @@ body {
 }
 
 .game-wrapper {
-    width: min(1100px, 96vw);
+    width: min(1200px, 96vw);
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 18px;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
+
+/* Responsive base adjustments */
+@media (max-width: 900px) {
+    .game-wrapper { width: 95vw; }
+    .header { flex-direction: column; align-items: stretch; gap: 12px; }
+    .hud { justify-content: space-between; width: 100%; }
+    .game-title { font-size: 20px; }
+}
+
+@media (max-width: 520px) {
+    body { padding: 10px; }
+    .hud { gap: 8px; align-items: center; }
+    .score, .timer { padding: 10px 8px; font-size: 16px; }
+    .btn { padding: 10px 12px; font-size: 16px; }
+    #game-container { height: 58vh; padding: 8px; }
+    .drop img { width: 44px !important; }
+}
+
+/* Make HUD buttons full-width and stack neatly on very small screens */
+@media (max-width: 420px) {
+    .header { gap: 10px; }
+    .hud { flex-direction: column-reverse; align-items: stretch; gap: 8px; }
+    .hud .btn { width: 100%; }
+    .score, .timer { width: 100%; display: flex; justify-content: space-between; }
+    .game-title { font-size: 18px; }
+    #game-container { height: 60vh; }
+    .drop img { width: 40px !important; }
+}
+
+/* Overlay responsiveness */
+.overlay-card {
+    max-width: 92vw;
+    width: 420px;
+}
+
+@media (max-width: 420px) {
+    .overlay-card { padding: 20px; width: 92vw; }
+    .overlay-score { font-size: 18px; }
+    .overlay h2 { font-size: 20px; }
+}
+
+/* Larger screens: slightly increase container size */
+@media (min-width: 1200px) {
+        .game-wrapper { width: 1150px; }
+        #game-container { height: 74vh; }
+}
+
+/* Header layout for large screens: grid to keep title left and HUD right */
+@media (min-width: 900px) {
+    .header { display: grid; grid-template-columns: 1fr auto; align-items: center; }
+    .title-wrap { padding-right: 12px; }
+    .hud { display: flex; gap: 14px; align-items: center; }
+}
+
+/* Use clamp for button and title sizing for smooth scaling */
+.game-title { font-size: clamp(18px, 3.6vw, 36px); }
+.btn { font-size: clamp(14px, 1.8vw, 16px); padding: clamp(8px, 1.2vw, 10px) clamp(10px, 1.6vw, 14px); }
+
+/* Responsive container height: prefer viewport but keep a reasonable cap */
+#game-container { height: clamp(420px, 68vh, 820px); }
+
+/* Make drop images scale nicely with viewport using clamp as default fallback */
+.drop img { width: clamp(36px, 5.2vw, 84px); }
+
+/* Overlay card sized responsively */
+.overlay-card { width: clamp(260px, 42vw, 480px); }
 
 /* Header with title and HUD */
 .header {
@@ -58,12 +126,12 @@ body {
 
 .game-title {
     font-size: clamp(20px, 3.8vw, 36px);
-    color: #0b6b6b;
+    color: #000000;
     letter-spacing: 0.5px;
 }
 
 .game-tagline {
-    color: #2f7f6f;
+    color: #000000;
     opacity: 0.9;
     font-size: 14px;
 }
@@ -74,8 +142,15 @@ body {
     gap: 14px;
 }
 
+.btn--muted {
+    background: linear-gradient(180deg, #e9f7f0 0%, #dff3ea 100%);
+    color: #0b6b6b;
+    box-shadow: none;
+    border: 1px solid rgba(11,107,107,0.06);
+}
+
 .score, .timer {
-    background: rgba(255,255,255,0.8);
+    background: #ffde06;
     padding: 8px 12px;
     border-radius: 10px;
     font-weight: 700;
@@ -85,8 +160,8 @@ body {
 .btn {
     appearance: none;
     border: none;
-    background: linear-gradient(180deg, #2aa17a 0%, #1f8a63 100%);
-    color: white;
+    background: linear-gradient(180deg, #ffde06 0%, #d7bf05 100%);
+    color: hsla(0, 0%, 0%, 0.763);
     padding: 8px 14px;
     border-radius: 10px;
     cursor: pointer;
@@ -95,6 +170,43 @@ body {
 }
 
 .btn:active { transform: translateY(1px); }
+
+/* Pause button in top-right of the game container */
+.btn--pause {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 30;
+    background: linear-gradient(180deg, #FFC907 0%, #FFB000 100%); /* yellow */
+    color: #073b3a;
+    font-weight: 800;
+    border-radius: 12px;
+    padding: 8px 12px;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+    pointer-events: auto;
+}
+
+/* Resume button style (yellow-on-blue looks) */
+.btn--resume {
+    background: linear-gradient(180deg, #FFC907 0%, #FFB000 100%);
+    color: #073b3a;
+    font-weight: 800;
+    border-radius: 12px;
+    padding: 10px 16px;
+}
+
+/* Pause overlay: semi-transparent and centered resume card */
+#pause-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(6,38,36,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+
+#pause-overlay .overlay-card { text-align: center; }
 
 /* Main game area */
 #game-container {
@@ -109,16 +221,15 @@ body {
     box-shadow: 0 12px 40px rgba(3,50,45,0.06);
 }
 
-/* Fixed decorative background behind the whole app */
-.background {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    /* Use the image from the img folder (exact filename includes commas) */
-    background: url('img/ChatGPT Image Oct 22, 2025, 12_40_37 AM.png') center/cover no-repeat;
-    z-index: -1; /* Keep it behind the game */
+/* Remove decorative background image (we rely on a flat color now). */
+/* Minor overlay adjustments remain for legibility inside the game container */
+@media (min-width: 720px) {
+    .background::after { background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.06)); }
+}
+
+/* Large screens: slightly reduce overlay opacity */
+@media (min-width: 1400px) {
+    .background::after { background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.04)); }
 }
 
 /* Ensure the game container sits above the background */
@@ -126,6 +237,10 @@ body {
     position: relative;
     z-index: 1;
 }
+
+/* Keep overlay and drops above the background image inside the container */
+.drop { z-index: 5; }
+.overlay { z-index: 10; }
 
 /* Image-based raindrops (SVG). We use an <img> inside a positioned .drop
      wrapper so the JS can easily place elements at arbitrary coordinates and
@@ -204,5 +319,22 @@ body {
     pointer-events: none;
 }
 /* removed can styles */
+
+/* Charity logo fixed at bottom center */
+.logo-wrap {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 60; /* above other UI */
+    pointer-events: none; /* decorative */
+}
+
+.site-logo {
+    width: clamp(140px, 18vw, 320px);
+    height: auto;
+    opacity: 0.95;
+    display: block;
+}
 
 

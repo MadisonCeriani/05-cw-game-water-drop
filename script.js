@@ -21,6 +21,10 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const finalScoreEl = document.getElementById('final-score');
 const restartBtn = document.getElementById('restart-btn');
+const resetBtn = document.getElementById('reset-btn');
+const pauseBtn = document.getElementById('pause-btn');
+const pauseOverlay = document.getElementById('pause-overlay');
+const resumeBtn = document.getElementById('resume-btn');
 
 // Utility: random integer in [min, max]
 function randInt(min, max) {
@@ -37,6 +41,9 @@ function startGame() {
   timeEl.textContent = timeLeft;
   overlay.classList.add('hidden');
   overlay.setAttribute('aria-hidden', 'true');
+
+  // show pause button while playing
+  if (pauseBtn) pauseBtn.hidden = false;
 
   // Spawn drops periodically
   spawnIntervalId = setInterval(() => spawnDrop(), SPAWN_INTERVAL);
@@ -59,6 +66,9 @@ function endGame() {
   clearInterval(countdownIntervalId);
   spawnIntervalId = null;
   countdownIntervalId = null;
+
+  // hide pause while game over
+  if (pauseBtn) pauseBtn.hidden = true;
 
   // Remove remaining drops with a short fade
   const drops = Array.from(gameContainer.querySelectorAll('.drop'));
@@ -92,7 +102,12 @@ function spawnDrop() {
 
   // Random horizontal position inside the container
   const containerRect = gameContainer.getBoundingClientRect();
-  const size = randInt(40, 68); // choose a visual size for the SVG
+  // Choose size based on container width for responsiveness
+  let sizeMin = 36, sizeMax = 68;
+  if (containerRect.width <= 360) { sizeMin = 30; sizeMax = 46; }
+  else if (containerRect.width <= 520) { sizeMin = 34; sizeMax = 54; }
+  else if (containerRect.width >= 1000) { sizeMin = 46; sizeMax = 84; }
+  const size = randInt(sizeMin, sizeMax); // choose a visual size for the SVG
   img.style.width = size + 'px';
   const x = Math.random() * (containerRect.width - size - 8) + 4;
   wrapper.style.left = x + 'px';
@@ -147,6 +162,78 @@ function showFloatingScore(x, y, text, color) {
 // Wiring: Start and Restart buttons
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', () => startGame());
+if (resetBtn) resetBtn.addEventListener('click', resetGame);
+if (pauseBtn) pauseBtn.addEventListener('click', pauseGame);
+if (resumeBtn) resumeBtn.addEventListener('click', resumeGame);
+
+// Reset the current game immediately: stop timers, clear drops, reset score/time and start fresh
+function resetGame() {
+  // clear timers if running
+  if (spawnIntervalId) { clearInterval(spawnIntervalId); spawnIntervalId = null; }
+  if (countdownIntervalId) { clearInterval(countdownIntervalId); countdownIntervalId = null; }
+
+  // remove existing drops
+  const drops = Array.from(gameContainer.querySelectorAll('.drop'));
+  drops.forEach(d => d.remove());
+
+  // reset state values and UI
+  running = false;
+  score = 0;
+  timeLeft = GAME_DURATION;
+  scoreEl.textContent = score;
+  timeEl.textContent = timeLeft;
+  overlay.classList.add('hidden');
+  overlay.setAttribute('aria-hidden', 'true');
+
+  // start a fresh game
+  startGame();
+}
+
+// Pause the game: stop timers and freeze animations
+function pauseGame() {
+  if (!running) return;
+  // stop timers
+  if (spawnIntervalId) { clearInterval(spawnIntervalId); spawnIntervalId = null; }
+  if (countdownIntervalId) { clearInterval(countdownIntervalId); countdownIntervalId = null; }
+
+  // pause CSS animations for existing drops
+  const drops = Array.from(gameContainer.querySelectorAll('.drop'));
+  drops.forEach(d => {
+    d.style.animationPlayState = 'paused';
+  });
+
+  // show pause overlay and hide pause button
+  if (pauseOverlay) { pauseOverlay.classList.remove('hidden'); pauseOverlay.setAttribute('aria-hidden', 'false'); }
+  if (pauseBtn) pauseBtn.hidden = true;
+
+  // mark not running but preserve timeLeft/score for resume
+  running = false;
+}
+
+// Resume the game: restart timers and unfreeze animations
+function resumeGame() {
+  if (running) return;
+
+  // resume CSS animations
+  const drops = Array.from(gameContainer.querySelectorAll('.drop'));
+  drops.forEach(d => {
+    d.style.animationPlayState = 'running';
+  });
+
+  // restart spawn timer and countdown
+  spawnIntervalId = setInterval(() => spawnDrop(), SPAWN_INTERVAL);
+  countdownIntervalId = setInterval(() => {
+    timeLeft -= 1;
+    timeEl.textContent = timeLeft;
+    if (timeLeft <= 0) endGame();
+  }, 1000);
+
+  // hide pause overlay and show pause button
+  if (pauseOverlay) { pauseOverlay.classList.add('hidden'); pauseOverlay.setAttribute('aria-hidden', 'true'); }
+  if (pauseBtn) pauseBtn.hidden = false;
+
+  running = true;
+}
 
 // Accessibility: pressing Space/Enter while overlay focused restarts
 overlay.addEventListener('keydown', (e) => {
