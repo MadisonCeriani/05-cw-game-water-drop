@@ -18,6 +18,7 @@ Fonts:
 
 */
 
+/* Reset and base */
 * {
     margin: 0;
     padding: 0;
@@ -25,121 +26,183 @@ Fonts:
 }
 
 body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    background: linear-gradient(180deg, #e6f8ff 0%, #e9f7ee 60%);
     min-height: 100vh;
-    background-color: #f0f0f0;
-    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: #073b3a;
 }
 
 .game-wrapper {
+    width: min(1100px, 96vw);
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 20px;
+    gap: 18px;
 }
 
-.score-panel {
+/* Header with title and HUD */
+.header {
     display: flex;
-    justify-content: space-between;  /* Space between score and button */
+    justify-content: space-between;
     align-items: center;
-    width: 800px;
-    padding: 10px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    gap: 12px;
 }
 
-.timer {
-    flex: 0 1 auto;
-    font-size: 24px;
-    font-weight: bold;
-}
-
-#game-container {
-    width: 800px;
-    height: 600px;
-    background-color: #e6f7ff;
-    border: 2px solid #333;
-    border-radius: 8px;
-    position: relative;
-    overflow: hidden;
-}
-
-
-#start-btn {
-    padding: 8px 16px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-}
-
-#start-btn:hover {
-    background-color: #45a049;
-}
-
-.score {
-    flex: 0 1 auto;  /* Don't grow, can shrink, auto basis */
-    font-size: 24px;
-    font-weight: bold;
-}
-
-.water-drop {
-    position: absolute;
-    width: 60px;  /* increased from 40px */
-    height: 60px; /* increased from 40px */
-    background-color: #0099ff;
-    border-radius: 50%;
-    animation: dropFall linear forwards;
-    transform-origin: center;
-    cursor: pointer;
-    padding: 15px;  /* Add padding for larger click area */
-    margin: -15px;  /* Offset padding to maintain visual size */
-    transition: transform 0.1s ease;  /* Smooth hover effect */
-}
-
-.water-drop:hover {
-    transform: scale(1.1);  /* Slight grow effect on hover */
-}
-
-.bad-drop {
-    background-color: #ff4444;
+.title-wrap {
+    display: flex;
+    flex-direction: column;
 }
 
 .game-title {
-    color: #131313;
-    font-size: 48px;
-    margin-top: 0;
-    margin-bottom: 5px;  /* reduced from 20px */
-    text-align: center;
+    font-size: clamp(20px, 3.8vw, 36px);
+    color: #0b6b6b;
+    letter-spacing: 0.5px;
 }
 
 .game-tagline {
-    color: #666;
-    font-size: 18px;
-    margin-bottom: 20px;
+    color: #2f7f6f;
+    opacity: 0.9;
+    font-size: 14px;
+}
+
+.hud {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.score, .timer {
+    background: rgba(255,255,255,0.8);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-weight: 700;
+    box-shadow: 0 6px 18px rgba(12,70,60,0.06);
+}
+
+.btn {
+    appearance: none;
+    border: none;
+    background: linear-gradient(180deg, #2aa17a 0%, #1f8a63 100%);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 700;
+    box-shadow: 0 6px 14px rgba(18,94,76,0.12);
+}
+
+.btn:active { transform: translateY(1px); }
+
+/* Main game area */
+#game-container {
+    width: 100%;
+    height: min(70vh, 680px);
+    background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.2));
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+    padding: 12px;
+    border: 2px solid rgba(10,80,70,0.06);
+    box-shadow: 0 12px 40px rgba(3,50,45,0.06);
+}
+
+/* Fixed decorative background behind the whole app */
+.background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Use the image from the img folder (exact filename includes commas) */
+    background: url('img/ChatGPT Image Oct 22, 2025, 12_40_37 AM.png') center/cover no-repeat;
+    z-index: -1; /* Keep it behind the game */
+}
+
+/* Ensure the game container sits above the background */
+#game-container {
+    position: relative;
+    z-index: 1;
+}
+
+/* Image-based raindrops (SVG). We use an <img> inside a positioned .drop
+     wrapper so the JS can easily place elements at arbitrary coordinates and
+     still benefit from natural SVG scaling. */
+.drop {
+    position: absolute;
+    width: auto;
+    height: auto;
+    pointer-events: auto;
+    transform-origin: center top;
+}
+
+.drop img {
+    display: block;
+    width: 56px; /* default visual size */
+    height: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+    cursor: pointer;
+    transition: transform 120ms ease, opacity 200ms ease, filter 160ms ease;
+}
+
+/* Collected state for image drops */
+.drop.collected img { transform: scale(0.8) translateY(-10px); opacity: 0; }
+
+/* Slight rotation variance for personality */
+.drop.rotate-1 img { transform: rotate(-6deg); }
+.drop.rotate-2 img { transform: rotate(4deg); }
+
+/* Clicked (collected) animation */
+.collected { transform: scale(0.8) translateY(-10px); opacity: 0; }
+
+/* Falling animation uses CSS variable for duration */
+@keyframes fall {
+    from { transform: translateY(-20px); opacity: 1; }
+    to   { transform: translateY(110%); opacity: 0.95; }
+}
+
+/* Overlay shown when the game ends */
+.overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(6,38,36,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 40;
+}
+
+.overlay.hidden { display: none; }
+
+.overlay-card {
+    background: linear-gradient(180deg,#ffffff,#f0fff6);
+    padding: 28px 30px;
+    border-radius: 14px;
     text-align: center;
+    box-shadow: 0 20px 60px rgba(2,40,36,0.18);
 }
 
-@keyframes dropFall {
-    from {
-        transform: translateY(-20px);
-    }
-    to {
-        transform: translateY(600px);
-    }
+.overlay h2 { margin-bottom: 12px; color: #074b46; }
+.overlay-score { font-size: 20px; margin-bottom: 18px; color: #0b6b6b; font-weight: 700; }
+
+/* Responsive tweaks */
+@media (max-width: 680px) {
+    .hud { gap: 8px; }
+    .drop { width: 40px; height: 54px; }
 }
 
-@media (max-width: 850px) {
-    .game-wrapper, .score-panel, #game-container {
-        width: 95vw;
-    }
-    
-    #game-container {
-        height: 70vh;
-    }
+/* Water can UI: fixed at bottom center */
+.can-wrap {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 45; /* above overlay so it's always visible */
+    pointer-events: none;
 }
+/* removed can styles */
+
+
