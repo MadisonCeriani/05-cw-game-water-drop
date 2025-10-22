@@ -22,9 +22,6 @@ const overlayTitle = document.getElementById('overlay-title');
 const finalScoreEl = document.getElementById('final-score');
 const restartBtn = document.getElementById('restart-btn');
 const resetBtn = document.getElementById('reset-btn');
-const pauseBtn = document.getElementById('pause-btn');
-const pauseOverlay = document.getElementById('pause-overlay');
-const resumeBtn = document.getElementById('resume-btn');
 
 // Utility: random integer in [min, max]
 function randInt(min, max) {
@@ -41,9 +38,6 @@ function startGame() {
   timeEl.textContent = timeLeft;
   overlay.classList.add('hidden');
   overlay.setAttribute('aria-hidden', 'true');
-
-  // show pause button while playing
-  if (pauseBtn) pauseBtn.hidden = false;
 
   // Spawn drops periodically
   spawnIntervalId = setInterval(() => spawnDrop(), SPAWN_INTERVAL);
@@ -67,9 +61,6 @@ function endGame() {
   spawnIntervalId = null;
   countdownIntervalId = null;
 
-  // hide pause while game over
-  if (pauseBtn) pauseBtn.hidden = true;
-
   // Remove remaining drops with a short fade
   const drops = Array.from(gameContainer.querySelectorAll('.drop'));
   drops.forEach(d => d.remove());
@@ -79,6 +70,127 @@ function endGame() {
   overlayTitle.textContent = timeLeft <= 0 ? "Time's up!" : "Game over";
   overlay.classList.remove('hidden');
   overlay.setAttribute('aria-hidden', 'false');
+  // trigger confetti celebration
+  launchConfetti(80);
+  // stop confetti after a few seconds
+  setTimeout(() => stopConfetti(), 4200);
+}
+
+/* ----------------- Confetti system ----------------- */
+const confettiCanvas = document.getElementById('confetti-canvas');
+let confettiCtx = null;
+let confettiParticles = [];
+let confettiAnimating = false;
+
+function initConfetti() {
+  if (!confettiCanvas) return;
+  confettiCtx = confettiCanvas.getContext('2d');
+  resizeConfettiCanvas();
+  window.addEventListener('resize', resizeConfettiCanvas);
+}
+
+function resizeConfettiCanvas() {
+  if (!confettiCanvas) return;
+  confettiCanvas.width = confettiCanvas.clientWidth * devicePixelRatio;
+  confettiCanvas.height = confettiCanvas.clientHeight * devicePixelRatio;
+  if (confettiCtx) confettiCtx.scale(devicePixelRatio, devicePixelRatio);
+}
+
+function randomRange(a, b) { return a + Math.random() * (b - a); }
+
+function createParticle(x, y) {
+  const colors = ['#FFD166', '#06B6D4', '#EF476F', '#2EC4B6', '#FFA07A', '#8AD2FF'];
+  return {
+    x, y,
+    vx: randomRange(-2.5, 2.5),
+    vy: randomRange(-6, -2),
+    size: randomRange(6, 12),
+    color: colors[Math.floor(Math.random() * colors.length)],
+    rot: randomRange(0, Math.PI * 2),
+    vr: randomRange(-0.15, 0.15),
+    life: 0,
+    ttl: randomRange(80, 140)
+  };
+}
+
+function drawConfetti() {
+  if (!confettiCtx) return;
+  confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  const ctx = confettiCtx;
+  confettiParticles.forEach(p => {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+    ctx.restore();
+  });
+}
+
+function stepConfetti() {
+  for (let i = confettiParticles.length - 1; i >= 0; i--) {
+    const p = confettiParticles[i];
+    p.vy += 0.18; // gravity
+    p.x += p.vx;
+    p.y += p.vy;
+    p.rot += p.vr;
+    p.life++;
+    if (p.life > p.ttl) confettiParticles.splice(i, 1);
+  }
+  drawConfetti();
+  if (confettiAnimating) requestAnimationFrame(stepConfetti);
+}
+
+function launchConfetti(count = 60) {
+  if (!confettiCanvas) return;
+  if (!confettiCtx) initConfetti();
+  const rect = confettiCanvas.getBoundingClientRect();
+  for (let i = 0; i < count; i++) {
+    const x = Math.random() * rect.width;
+    const y = rect.height * 0.15 + Math.random() * rect.height * 0.1; // spawn from near top
+    confettiParticles.push(createParticle(x, y));
+  }
+  if (!confettiAnimating) {
+    confettiAnimating = true;
+    requestAnimationFrame(stepConfetti);
+  }
+}
+
+function stopConfetti() {
+  confettiAnimating = false;
+  if (confettiCtx && confettiCanvas) {
+    confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+    confettiParticles = [];
+  }
+}
+
+// Initialize canvas sizing on load
+initConfetti();
+
+/* ----------------- end confetti ----------------- */
+
+// Reset the game immediately: stop timers, clear drops/floating UI, then start fresh
+function resetGame() {
+  // stop existing timers
+  running = false;
+  if (spawnIntervalId) { clearInterval(spawnIntervalId); spawnIntervalId = null; }
+  if (countdownIntervalId) { clearInterval(countdownIntervalId); countdownIntervalId = null; }
+
+  // clear drops
+  const drops = Array.from(gameContainer.querySelectorAll('.drop'));
+  drops.forEach(d => d.remove());
+
+  // clear any transient floating score elements (they're appended to body)
+  const floats = Array.from(document.querySelectorAll('body > div'))
+    .filter(el => el && el.textContent && (/^[+-]\d+$/.test(el.textContent.trim())));
+  floats.forEach(f => f.remove());
+
+  // hide overlay if visible
+  overlay.classList.add('hidden');
+  overlay.setAttribute('aria-hidden', 'true');
+
+  // restart the game fresh
+  startGame();
 }
 
 // Create a single drop. Randomly decides clean vs polluted.
@@ -163,77 +275,6 @@ function showFloatingScore(x, y, text, color) {
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', () => startGame());
 if (resetBtn) resetBtn.addEventListener('click', resetGame);
-if (pauseBtn) pauseBtn.addEventListener('click', pauseGame);
-if (resumeBtn) resumeBtn.addEventListener('click', resumeGame);
-
-// Reset the current game immediately: stop timers, clear drops, reset score/time and start fresh
-function resetGame() {
-  // clear timers if running
-  if (spawnIntervalId) { clearInterval(spawnIntervalId); spawnIntervalId = null; }
-  if (countdownIntervalId) { clearInterval(countdownIntervalId); countdownIntervalId = null; }
-
-  // remove existing drops
-  const drops = Array.from(gameContainer.querySelectorAll('.drop'));
-  drops.forEach(d => d.remove());
-
-  // reset state values and UI
-  running = false;
-  score = 0;
-  timeLeft = GAME_DURATION;
-  scoreEl.textContent = score;
-  timeEl.textContent = timeLeft;
-  overlay.classList.add('hidden');
-  overlay.setAttribute('aria-hidden', 'true');
-
-  // start a fresh game
-  startGame();
-}
-
-// Pause the game: stop timers and freeze animations
-function pauseGame() {
-  if (!running) return;
-  // stop timers
-  if (spawnIntervalId) { clearInterval(spawnIntervalId); spawnIntervalId = null; }
-  if (countdownIntervalId) { clearInterval(countdownIntervalId); countdownIntervalId = null; }
-
-  // pause CSS animations for existing drops
-  const drops = Array.from(gameContainer.querySelectorAll('.drop'));
-  drops.forEach(d => {
-    d.style.animationPlayState = 'paused';
-  });
-
-  // show pause overlay and hide pause button
-  if (pauseOverlay) { pauseOverlay.classList.remove('hidden'); pauseOverlay.setAttribute('aria-hidden', 'false'); }
-  if (pauseBtn) pauseBtn.hidden = true;
-
-  // mark not running but preserve timeLeft/score for resume
-  running = false;
-}
-
-// Resume the game: restart timers and unfreeze animations
-function resumeGame() {
-  if (running) return;
-
-  // resume CSS animations
-  const drops = Array.from(gameContainer.querySelectorAll('.drop'));
-  drops.forEach(d => {
-    d.style.animationPlayState = 'running';
-  });
-
-  // restart spawn timer and countdown
-  spawnIntervalId = setInterval(() => spawnDrop(), SPAWN_INTERVAL);
-  countdownIntervalId = setInterval(() => {
-    timeLeft -= 1;
-    timeEl.textContent = timeLeft;
-    if (timeLeft <= 0) endGame();
-  }, 1000);
-
-  // hide pause overlay and show pause button
-  if (pauseOverlay) { pauseOverlay.classList.add('hidden'); pauseOverlay.setAttribute('aria-hidden', 'true'); }
-  if (pauseBtn) pauseBtn.hidden = false;
-
-  running = true;
-}
 
 // Accessibility: pressing Space/Enter while overlay focused restarts
 overlay.addEventListener('keydown', (e) => {
