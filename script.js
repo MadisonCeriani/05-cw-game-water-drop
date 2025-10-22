@@ -11,6 +11,7 @@ let timeLeft = GAME_DURATION;
 let running = false;
 let spawnIntervalId = null;
 let countdownIntervalId = null;
+let canIntervalId = null;
 
 // Elements
 const scoreEl = document.getElementById('score');
@@ -41,6 +42,8 @@ function startGame() {
 
   // Spawn drops periodically
   spawnIntervalId = setInterval(() => spawnDrop(), SPAWN_INTERVAL);
+  // Spawn a water can every 10 seconds
+  canIntervalId = setInterval(() => spawnCan(), 10000);
 
   // Start countdown timer that updates every second
   countdownIntervalId = setInterval(() => {
@@ -58,6 +61,7 @@ function endGame() {
   running = false;
   clearInterval(spawnIntervalId);
   clearInterval(countdownIntervalId);
+  if (canIntervalId) { clearInterval(canIntervalId); canIntervalId = null; }
   spawnIntervalId = null;
   countdownIntervalId = null;
 
@@ -175,6 +179,7 @@ function resetGame() {
   running = false;
   if (spawnIntervalId) { clearInterval(spawnIntervalId); spawnIntervalId = null; }
   if (countdownIntervalId) { clearInterval(countdownIntervalId); countdownIntervalId = null; }
+  if (canIntervalId) { clearInterval(canIntervalId); canIntervalId = null; }
 
   // clear drops
   const drops = Array.from(gameContainer.querySelectorAll('.drop'));
@@ -189,8 +194,48 @@ function resetGame() {
   overlay.classList.add('hidden');
   overlay.setAttribute('aria-hidden', 'true');
 
+  // remove any existing cans
+  const cans = Array.from(gameContainer.querySelectorAll('.drop.can'));
+  cans.forEach(c => c.remove());
+
   // restart the game fresh
   startGame();
+}
+
+// Create and spawn a water can drop worth +3 points
+function spawnCan() {
+  if (!running) return;
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('drop', 'can');
+
+  const img = document.createElement('img');
+  img.src = 'img/water-can.png';
+  img.alt = 'Water can';
+  img.style.width = '64px';
+  wrapper.appendChild(img);
+
+  // place randomly like other drops
+  const containerRect = gameContainer.getBoundingClientRect();
+  const size = 64;
+  const x = Math.random() * (containerRect.width - size - 8) + 4;
+  wrapper.style.left = x + 'px';
+
+  // fall with slightly slower animation so players can tap it
+  const fallTime = randInt(MIN_FALL_TIME + 800, MAX_FALL_TIME + 1200);
+  wrapper.style.animation = `fall ${fallTime}ms linear forwards`;
+
+  const onCollect = (ev) => {
+    ev.stopPropagation();
+    wrapper.classList.add('collected');
+    score += 3; // can gives +3 points
+    scoreEl.textContent = score;
+    showFloatingScore(x + size / 2, wrapper.getBoundingClientRect().top + 10, '+3', '#ffd166');
+    setTimeout(() => wrapper.remove(), 260);
+  };
+
+  wrapper.addEventListener('pointerdown', onCollect, { once: true });
+  wrapper.addEventListener('animationend', () => wrapper.remove());
+  gameContainer.appendChild(wrapper);
 }
 
 // Create a single drop. Randomly decides clean vs polluted.

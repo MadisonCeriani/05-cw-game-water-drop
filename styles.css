@@ -261,6 +261,14 @@ body {
 /* Clicked (collected) animation */
 .collected { transform: scale(0.8) translateY(-10px); opacity: 0; }
 
+/* Special styling for water can drop */
+.drop.can img {
+    width: 64px;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.12));
+    transform-origin: center top;
+}
+.drop.can { cursor: pointer; }
+
 /* Falling animation uses CSS variable for duration */
 @keyframes fall {
     from { transform: translateY(-20px); opacity: 1; }
